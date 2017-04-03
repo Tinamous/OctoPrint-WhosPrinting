@@ -1,0 +1,189 @@
+<div class="row-fluid" data-bind="visible: isNotPrinting">
+    <h3>Who's Printing:</h3>
+</div>
+
+<div class="row-fluid" data-bind="visible: notLoggedIn">
+    <p>You need to be logged in to view contact details for the person printing.</p>
+    <p>
+        To register for Who's printing so you can be contacted when you are using the printer please click the [Register] button on the top bar.
+    </p>
+</div>
+
+<div data-bind="visible: loginStateViewModel.isUser">
+
+    <div class="row-fluid"  data-bind="visible: isNotPrinting">
+
+        <select id="selectHowsPrinting"
+                class="form-control"
+                style="width: 80%; height: 60px; font-size: 24px"
+                data-bind="options: whosPrintingList, value:selectedWhosPrinting, optionsCaption:'Select Whos Printing'">
+        </select>
+
+        <button style="width: 15%; height: 60px;" class="btn btn-lg btn-default" data-bind="click:startedPrinting, visible: canIndicatePrinting">Set</button>
+    </div>
+
+    <div class="row-fluid" data-bind="visible: isPrinting, with: whosPrinting">
+        <h2><span data-bind="text: displayName"></span> is Printing</h2>
+        <h4>Contact Details:</h4>
+        <ul>
+            <li>Twitter: @<span data-bind="text:twitterHandle"></span></li>
+            <li>Email: <span data-bind="text:emailAddress"></span></li>
+            <li>Phone: <span data-bind="text:phoneNumber"></span></li>
+        </ul>
+    </div>
+
+    <div class="row-fluid" data-bind="visible: isPrinting">
+            <button style="width: 45%; height: 60px;" class="btn btn-danger" data-toggle="modal" data-target="#whosprinting_confirm_print_failed">Print Failed</button>
+            <button style="width: 45%; height: 60px;" class="btn btn-success" data-toggle="modal" data-target="#whosprinting_confirm_print_finished">Print Finished</button>
+    </div>
+
+    <div class="row-fluid">
+        <h3>Who's Printed Recently:</h3>
+        <ul data-bind="foreach: whosPrintingHistory">
+            <li data-bind="text: displayName"></li>
+        </ul>
+    </div>
+
+
+
+<div id="whosprinting_register_dialog" data-bind="with: registerUserViewModel" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Register</h4>
+            </div>
+
+            <div class="modal-body">
+                <p>This will register an account with OctoPrint and make that available as a Who's Printing entry.</p>
+                <p>NB: Contact information will be shown on the OctoPrint page which may be publically accessible. You can enter as few or as many contact details as you wish.</p>
+
+                <div class="control-group">
+                    <label class="control-label">Username</label>
+                    <div class="controls">
+                        <input type="text", data-bind="value: username" />
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Password</label>
+                    <div class="controls">
+                        <input type="text", data-bind="value: password" />
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Confirm Password</label>
+                    <div class="controls">
+                        <input type="text", data-bind="value: confirmPassword" />
+                    </div>
+                </div>
+
+                <h3>Optional Details</h3>
+
+                <div class="control-group">
+                    <label class="control-label">Display Name</label>
+                    <div class="controls">
+                        <input type="text", data-bind="value: displayName" />
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Email Address</label>
+                    <div class="controls">
+                        <input type="text", data-bind="value: emailAddress" />
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Phone Number</label>
+                    <div class="controls">
+                        <input type="text", data-bind="value: phoneNumber" />
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Twitter Handle</label>
+                    <div class="controls">
+                        @<input type="text", data-bind="value: twitterHandle" />
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Print In Private</label>
+                    <div class="controls">
+                        <input type="checkbox", data-bind="value: printInPrivate" />
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Key Fob Id</label>
+                    <div class="controls">
+                        <input type="text", data-bind="value: keyfobId" />
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="controls">
+                        <button data-bind="click: register">Register</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-dismiss="modal">Register</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<div id="whosprinting_confirm_print_failed" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Confirm Print Failed</h4>
+            </div>
+
+            <div class="modal-body">
+                <p>Please confirm the print has failed.</p>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-dismiss="modal" data-bind="click: printFailed">Print Failed</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div id="whosprinting_confirm_print_finished" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Confirm Print Finished</h4>
+            </div>
+
+            <div class="modal-body">
+                <p>Please confirm the print has finished.</p>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-dismiss="modal" data-bind="click: printFinished">Print Finished</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+</div>
