@@ -245,13 +245,14 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 			self._plugin_manager.send_plugin_message(self._identifier, pluginData)
 			return
 
-		if not self._settings.get(["raisePrintStartedOnRfidSwipe"], False):
-			self._logger.info("Not setting Who's Printing ")
+		useRfidReader = self._settings.get(['useRfidReader'])
+		if not self._settings.get(["useRfidReader"]):
+			self._logger.info("Not setting Who's Printing as RFDI Swipe is disabled in settings.")
 			return
 
 		# User was found so handle a known user swipping the RFID
-		pluginData = dict(eventEvent="WhosPrinting", eventPayload=dict())
-		self._plugin_manager.send_plugin_message(self._identifier, pluginData)
+		data = dict(username=user["name"])
+		self.set_whos_printing_print_started(data)
 		self._logger.info("raising print started from Rfid tag Swipe")
 
 	# Indicate that a user is printing as set from the Who's Printing Tab
@@ -378,19 +379,23 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 
 		email_address = None
 		if self._settings.get(['showEmailAddress']):
-			email_address = user_settings.get("emailAddress", "")
+			email_address = user_settings.get("emailAddress")
 
 		phone_number = None
 		if self._settings.get(['showPhoneNumber']):
-			phone_number = user_settings.get("phoneNumber", "")
+			phone_number = user_settings.get("phoneNumber")
+
+		displayName = user_settings.get("displayName");
+		if displayName == None:
+			displayName = self._whos_printing
 
 		settings = dict(
 			username=self._whos_printing,
-			displayName=user_settings.get("displayName", self._whos_printing),
+			displayName=displayName,
 			emailAddress=email_address,
 			phoneNumber=phone_number,
-			twitterHandle=user_settings.get("twitterHandle", ""),
-			printInPrivate=user_settings.get("printInPrivate", False),
+			twitterHandle=user_settings.get("twitterHandle"),
+			printInPrivate=user_settings.get("printInPrivate"),
 		)
 
 		return settings
@@ -401,7 +406,7 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 		users = self._user_manager.getAllUsers()
 		for user in users:
 			user_settings = user["settings"]
-			user_key_fob = user_settings.get("keyfobId", "")
+			user_key_fob = user_settings.get("keyfobId")
 			#user_key_fob = user.get_setting("keyfobId")
 			if tagId == user_key_fob:
 				return user
@@ -440,7 +445,7 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 		# self._rfidReader.seekTag()
 
 	def startTimer(self):
-		self._check_tags_timer = RepeatedTimer(1, self.check_tag, None, None, True)
+		self._check_tags_timer = RepeatedTimer(0.5, self.check_tag, None, None, True)
 		self._check_tags_timer.start()
 
 	def check_tag(self):
@@ -462,6 +467,7 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 			else:
 				# Clear last tag ready for a new one...
 				self._last_tag = None
+				self._logger.info("Tag removed")
 		except IOError as e:
 			self._logger.error("Error reading from the tag reader.")
 			#TODO: Disable after too many errors
