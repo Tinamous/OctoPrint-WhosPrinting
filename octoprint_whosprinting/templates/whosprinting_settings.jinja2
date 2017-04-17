@@ -1,28 +1,72 @@
 <form class="form-horizontal">
-    <div class="control-group col-xs-4">
-        <label class="control-label">RfidComPort</label>
+    <div class="control-group">
+        <label class="control-label">RFID Swipe Enabled</label>
+        <div class="controls">
+            <div class="input-append">
+                <input type="checkbox" class="input-block-level" data-bind="checked: settings.plugins.whosprinting.useRfidReader">
+                <span class="help-block">Starts the Who's Printing functionality on RFID card swipe</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="control-group col-xs-4" data-bind="visible: settings.plugins.whosprinting.useRfidReader">
+        <label class="control-label">RFID Reader Type</label>
         <div class="controls">
 		<div class="input-append">
-			<select data-bind="options: settings.plugins.whosprinting.commPorts, value: settings.plugins.whosprinting.rfidComPort" >
+			<select data-bind="options: settings.plugins.whosprinting.readerOptions, value: settings.plugins.whosprinting.rfidReaderType" >
 			</select>
 		</div>
         </div>
     </div>
 
-    <div class="control-group">
-        <label class="control-label">Fire PrintStarted Event</label>
+    <div class="control-group col-xs-4" data-bind="visible: settings.plugins.whosprinting.useRfidReader">
+        <label class="control-label">RFID Comm Port</label>
         <div class="controls">
 		<div class="input-append">
-			<input type="checkbox" class="input-block-level" data-bind="value: settings.plugins.whosprinting.raisePrintStartedOnRfidSwipe">
+			<select data-bind="options: serial_portOptions, value: settings.plugins.whosprinting.rfidComPort" >
+			</select>
+		</div>
+        </div>
+    </div>
+
+
+
+    <div class="control-group">
+        <label class="control-label">Fire Printer Events</label>
+        <div class="controls">
+		<div class="input-append">
+			<input type="checkbox" class="input-block-level" data-bind="checked: settings.plugins.whosprinting.firePrinterEvents">
+            <span class="help-block">Fire OctoPrints internal Printing/PrintStarted/PrintFailed events</span>
 		</div>
         </div>
     </div>
 
     <div class="control-group">
-        <label class="control-label">Email cc's</label>
+        <label class="control-label">Show Email</label>
         <div class="controls">
 		<div class="input-append">
-			<input type="checkbox" class="input-block-level" data-bind="value: settings.plugins.whosprinting.emailcc">
+			<input type="checkbox" class="input-block-level" data-bind="checked: settings.plugins.whosprinting.showEmailAddress">
+            <span class="help-block">If the users email address should be shown on the Who's Printing tab</span>
+		</div>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label">Show Phone Number</label>
+        <div class="controls">
+		<div class="input-append">
+			<input type="checkbox" class="input-block-level" data-bind="checked: settings.plugins.whosprinting.showPhoneNumber">
+            <span class="help-block">If the users phone number should be shown on the Who's Printing tab</span>
+		</div>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label">Open Registration</label>
+        <div class="controls">
+		<div class="input-append">
+			<input type="checkbox" class="input-block-level" data-bind="checked: settings.plugins.whosprinting.canRegister">
+            <span class="help-block">Enable users to self-register. This creates an OctoPrint user account.s</span>
 		</div>
         </div>
     </div>

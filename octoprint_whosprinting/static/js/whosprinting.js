@@ -18,9 +18,38 @@ $(function() {
         self.twitterHandle = ko.observable("");
         self.printInPrivate = ko.observable(false);
         self.pluginId = "whosprinting";
+        self.captureTagText = ko.observable("Capture");
+        self.captureRfidTag = ko.observable(false);
+
+        self.captureTag = function() {
+            console.log("Waiting for user tag to be seen.")
+            self.captureRfidTag(true);
+            self.captureTagText("Waiting...");
+
+            // TODO: Timeout so we don't stay in capture mode.
+        };
+
+        self.tagSeen = function(data) {
+            if (self.captureRfidTag()) {
+                console.log("KeyFobId from plugin data: " + data.keybobId);
+                self.keyfobId(data.tagId);
+                self.captureRfidTag(false);
+                self.captureTagText("Capture");
+            } else {
+                console.warn("Tag seen but not in capture tag mode.")
+            }
+        }
 
         self.register = function() {
             console.log("Register user. Plugin Id: " + self.pluginId)
+            self.captureRfidTag(false);
+            self.captureTagText("Capture");
+
+            if (self.password() != self.confirmPassword()) {
+                console.error("Password and confirm password do not match");
+                alert("Passwords do not match");
+            }
+
             var registerUser = {
                 username: self.username(),
                 password: self.password(),
@@ -32,7 +61,7 @@ $(function() {
                 printInPrivate: self.printInPrivate()
             };
             OctoPrint.simpleApiCommand(self.pluginId, "RegisterUser", registerUser, {});
-        }
+        };
 
         return self;
     }
@@ -50,7 +79,6 @@ $(function() {
     function WhosPrintingViewModel(parameters) {
         var self = this;
 
-        console.log("Who's Printing?");
         self.pluginId = "whosprinting";
 
         self.loginStateViewModel = parameters[0];
@@ -101,6 +129,7 @@ $(function() {
 
         self.onDataUpdaterPluginMessage = function(plugin, data) {
             if (plugin != "whosprinting") {
+                console.log("Not who's printing event")
                 return;
             }
 
@@ -108,26 +137,32 @@ $(function() {
                 console.log("Who's Printing Event from onDataUpdater");
                 self.getWhosPrinting();
             }
+
+            // Any tag seen. This can probably be ignored
+            // as only Unknown Rfid Tags should be used for registration.
+            if (data.eventEvent == "RfidTagSeen") {
+                console.log("User tag seen. TagId:" + data.eventPayload.tagId);
+                self.registerUserViewModel.tagSeen(data.eventPayload);
+            }
+
+            // If the tag was seen and it is unknown.
+            if (data.eventEvent == "UnknownRfidTagSeen") {
+                console.log("Unknown tag seen. TagId:" + data.eventPayload.tagId);
+                self.registerUserViewModel.tagSeen(data.eventPayload);
+
+            }
+
+            // A known tag will set the WhosPrinting event
         };
 
         self.onUserLoggedIn = function(user) {
-            console.warn("CurrentUser: " + user);
+            //console.warn("CurrentUser: " + user);
             //self.currentUser(user);
 
             console.log("*** on User Logged In")
             self.populateUsers();
             self.getWhosPrinting();
         };
-
-        // Custom event "WhosPrinting"
-        self.onEventWhosPrinting = function(payload) {
-            console.log("WhosPrinting event seen...");
-
-            // Update the who's printing.
-            self.getWhosPrinting();
-        };
-
-        // onEvent<EventName>(payload)
 
         // Get the list of users that can be shown in the populate users list.
         self.populateUsers = function() {
@@ -176,43 +211,32 @@ $(function() {
             console.log("User: " + self.selectedWhosPrinting());
 
             var payload = {
-                name: "FakePrint",
-                path:".",
-                origin:"local",
-                file: "/gcode/FakePrint.gcode",
-                whosPrinting: self.selectedWhosPrinting()};
+                username: self.selectedWhosPrinting()
+            };
             OctoPrint.simpleApiCommand(self.pluginId, "PrintStarted", payload, {});
         };
 
         self.printFailed = function() {
             self.isPrinting(false);
-            //$('#whosprinting_confirm_print_failed').modal('hide');
-
-            var payload = {
-                name: "FakePrint",
-                path:".",
-                origin:"local",
-                file: "/gcode/FakePrint.gcode",
-                whosPrinting: ""};
+            var payload = { };
             OctoPrint.simpleApiCommand(self.pluginId, "PrintFailed", payload, {});
         };
 
         self.printFinished = function() {
             self.isPrinting(false);
-            //$('#whosprinting_confirm_print_finished').modal('hide');
-
-            var payload = {
-                name: "FakePrint",
-                path:".",
-                origin:"local",
-                file: "/gcode/FakePrint.gcode",
-                whosPrinting: ""};
+            var payload = { };
             OctoPrint.simpleApiCommand(self.pluginId, "PrintFinished", payload, {});
         };
 
         self.showRegister = function() {
             console.log("Resister clicked. Plugin: ");
             $('#whosprinting_register_dialog').modal('show');
+        };
+
+        self.testKeyFob = function() {
+
+            var payload = { };
+            OctoPrint.simpleApiCommand(self.pluginId, "FakeTag", payload, {});
         };
     }
 

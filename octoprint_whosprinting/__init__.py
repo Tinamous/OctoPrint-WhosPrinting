@@ -6,41 +6,66 @@ import logging
 import logging.handlers
 
 from octoprint.events import eventManager, Events
+from octoprint.util import RepeatedTimer
 
 import octoprint.plugin
 
-class WhosPrintingPlugin(octoprint.plugin.SettingsPlugin,
+from .microRWDHiTag2Reader import microRWDHiTag2Reader
+from .nullTagReader import nullTagReader
+
+
+class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
+						 octoprint.plugin.ShutdownPlugin,
+                         octoprint.plugin.SettingsPlugin,
                          octoprint.plugin.AssetPlugin,
                          octoprint.plugin.TemplatePlugin,
-						 octoprint.plugin.SimpleApiPlugin,
-						 octoprint.plugin.EventHandlerPlugin):
+                         octoprint.plugin.SimpleApiPlugin,
+                         octoprint.plugin.EventHandlerPlugin):
 
 	def initialize(self):
 		self._logger.setLevel(logging.DEBUG)
 		self._logger.info("Who's Printing Plugin [%s] initialized..." % self._identifier)
-		self._whos_printing = "";
+		# The username of the person that is printing.
+		self._whos_printing = ""
+		self._check_tags_timer = None
+		self._rfidReader = nullTagReader(self._logger)
+
+	# Startup complete we can not get to the settings.
+	def on_after_startup(self):
+		self._logger.info("Who's Printing Plugin on_after_startup")
+		self.initialize_rfid_tag_reader()
+
+	def on_shutdown(self):
+		self._check_tags_timer = None
+		self._rfidReader.close()
+
 
 	##~~ SettingsPlugin mixin
 
 	def get_settings_defaults(self):
 		return dict(
-			commPorts=["COM1", "COM6"],
+			useRfidReader=True,
 			rfidComPort="AUTO",
-			raisePrintStartedOnRfidSwipe=True,
-			emailcc="", # who to copy email to when sending failed/finished
+			firePrinterEvents=True,
+			showEmailAddress=False,
+			showPhoneNumber=False,
+			canRegister=True,
+			rfidReaderType = "Micro RWD HiTag2",
+			readerOptions = ["None", "Micro RWD HiTag2"]
 		)
 
-	def get_settings_restricted_paths(self):
-		# only used in OctoPrint versions > 1.2.16
-		return dict(admin=[["emailcc"], ["commPorts"], ["rfidComPort"]])
+	def on_settings_save(self, data):
+		self._logger.info("on_settings_save")
+		octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
+		# Handle posisble port or RFID reader changed
+		self.initialize_rfid_tag_reader()
 
 	def get_template_configs(self):
 		return [
-			#dict(type="navbar", custom_bindings=False),
+			# dict(type="navbar", custom_bindings=False),
 			dict(type="settings", custom_bindings=False),
-			dict(type="tab", name="Whos Printing")
+			dict(type="tab", name="Who's Printing")
 		]
-
 
 	##~~ AssetPlugin mixin
 
@@ -76,21 +101,23 @@ class WhosPrintingPlugin(octoprint.plugin.SettingsPlugin,
 		)
 
 	# API GET command
-	# GET: http://localhost:5000/api/plugin/whosprinting?apikey=<key>
+	# GET: http://localhost:5000/api/plugin/whosprinting?command=<command>&apikey=<key>
+	# commands:
+	#   list: Lists the users who can be assigned as printing.
+	#   get_whos_printing: Returns the current user details for the user that is printing.
 	def on_api_get(self, request):
-		#self._logger.info("API Request args: {}".format(request.values.to_dict))
+		# self._logger.info("API Request args: {}".format(request.values.to_dict))
 
 		command = request.values.get("command", ".")
-		#self._logger.info("GET Command: {}".format(command))
+		# self._logger.info("GET Command: {}".format(command))
 
 		if command == "list":
 			self._logger.info("Building users list.")
-			matched_users = [];
+			matched_users = []
 
 			# returned as a dictionary, can't get at role.
 			users = self._user_manager.getAllUsers();
 			for user in users:
-				self._logger.info("User: {}".format(user))
 				# for list, show only the name rather than
 				# dump all the users identity info.
 				matched_users.append(user["name"]);
@@ -109,17 +136,8 @@ class WhosPrintingPlugin(octoprint.plugin.SettingsPlugin,
 				self._logger.info("Failed to find user: {0}".format(self._whos_printing));
 				return;
 
-			user_settings = user.get_all_settings()
-			self._logger.info("User settings: {}".format(user_settings))
+			settings = self.get_whos_printing_details(user)
 
-			settings = dict(
-				username=self._whos_printing,
-				displayName=user_settings.get("displayName", self._whos_printing),
-				emailAddress=user_settings.get("emailAddress", ""), #Should we be sending this back?
-				phoneNumber=user_settings.get("phoneNumber", ""), #Should we be sending this back?
-				twitterHandle=user_settings.get("twitterHandle", ""),
-				printInPrivate=user_settings.get("printInPrivate", False),
-			)
 			return flask.jsonify(user=settings)
 
 	# API POST command options
@@ -128,55 +146,145 @@ class WhosPrintingPlugin(octoprint.plugin.SettingsPlugin,
 
 		return dict(
 			GeyKeyfobId=[],
-			RegisterUser=["username", "password", "displayName", "emailAddress", "phoneNumber", "twitterHandle", "printInPrivate"],
+			RegisterUser=["username", "password", "displayName", "emailAddress", "phoneNumber", "twitterHandle",
+						  "printInPrivate"],
 			UpdateUser=["username", "displayName", "emailAddress", "phoneNumber", "twitterHandle", "printInPrivate"],
-			PrintStarted=[],
+			PrintStarted=["username"],
 			PrintFinished=[],
 			PrintFailed=[],
+			FakeTag=[],
 		)
 
 	# API POST command
 	def on_api_command(self, command, data):
 		self._logger.info("On api POST Data: {}".format(data))
 
-		if command == "GeyKeyfobId":
-			self.do_user_stuff()
-		elif command == "RegisterUser":
-			# "username", "password", "displayName", "emailAddress", "phoneNumber", "twitterHandle", "printInPrivate", "keyfobId"
+		if command == "RegisterUser":
+			# data contains: "username", "password", "displayName", "emailAddress", "phoneNumber", "twitterHandle", "printInPrivate", "keyfobId"
 			self.register_user(data)
 		elif command == "UpdateUser":
-			# "username", "displayName", "emailAddress", "phoneNumber", "twitterHandle", "printInPrivate", "keyfobId"
+			# data contains: "username", "displayName", "emailAddress", "phoneNumber", "twitterHandle", "printInPrivate", "keyfobId"
 			self.update_user(data)
 		elif command == "PrintStarted":
-			self._whos_printing = data["whosPrinting"]
-			self._logger.info("Set who's printing to: {0}".format(self._whos_printing))
-			self.fire_whos_printing()
-			self._event_bus.fire(Events.PRINT_STARTED, data)
+			# data contains: username
+			self.set_whos_printing_print_started(data)
 		elif command == "PrintFinished":
-			self._whos_printing = ""
-			self._event_bus.fire(Events.PRINT_DONE, data)
-			self.fire_whos_printing()
+			# data expected to be empty
+			self.set_whos_printing_print_finished(data)
 		elif command == "PrintFailed":
-			self._whos_printing = ""
-			self._event_bus.fire(Events.PRINT_FAILED, data)
-			self.fire_whos_printing()
+			# data expected to be empty
+			self.set_whos_printing_print_failed(data)
+		elif command == "FakeTag":
+			payload = dict(keyfobId="123789852")
+			pluginData = dict(eventEvent="UnknownRfidTagSeen", eventPayload=payload)
+			self._plugin_manager.send_plugin_message(self._identifier, pluginData)
 
-	# Custom event for WhosPrinting
+	# EventHandler Plugin
+	def on_event(self, event, payload):
+		# Custom event raised by Who's Printing RFIX Dat
+		if event == "RfidTagSeen":
+			self.handle_rfid_tag_seen_event(payload)
+
+	##########################################
+	# Implementation
+	##########################################
+
+	def handle_rfid_tag_seen_event(self, payload):
+		tagId = payload["tagId"]
+		self._logger.info("RFID Tag Seen: " + tagId)
+
+		# Raise the plugin message for an RfidTagSeen.
+		pluginData = dict(eventEvent="RfidTagSeen", eventPayload=payload)
+		self._plugin_manager.send_plugin_message(self._identifier, pluginData)
+
+		# Find the user this tag belongs to
+		user = self.find_user_from_tag(tagId)
+
+		if (user == None):
+			self._logger.info("Did not find a user for the tag.")
+			pluginData = dict(eventEvent="UnknownRfidTagSeen", eventPayload=payload)
+			self._plugin_manager.send_plugin_message(self._identifier, pluginData)
+			return
+
+		if not self._settings.get(["raisePrintStartedOnRfidSwipe"], False):
+			self._logger.info("Not setting Who's Printing ")
+			return
+
+		# User was found so handle a known user swipping the RFID
+		pluginData = dict(eventEvent="WhosPrinting", eventPayload=dict())
+		self._plugin_manager.send_plugin_message(self._identifier, pluginData)
+		self._logger.info("raising print started from Rfid tag Swipe")
+
+	# Indicate that a user is printing as set from the Who's Printing Tab
+	# data contains: name, path, origin,file, username
+	def set_whos_printing_print_started(self, data):
+		# Store the user that is currently printing.
+		self._whos_printing = data["username"]
+		self._logger.info("Set who's printing to: {0}".format(self._whos_printing))
+		self.fire_whos_printing()
+		self.fire_printer_event(Events.PRINT_STARTED, data)
+
+	# Indicate that a users print has finished (successfully) as set from the Who's Printing Tab
+	# data contains: name, path, origin,file
+	def set_whos_printing_print_finished(self, data):
+		self.fire_printer_event(Events.PRINT_DONE, data)
+		self._whos_printing = ""
+		self.fire_whos_printing()
+
+	# Indicate that a users print has failed :-( as set from the Who's Printing Tab
+	# data contains: name, path, origin,file
+	def set_whos_printing_print_failed(self, data):
+		self.fire_printer_event(Events.PRINT_FAILED, data)
+		self._whos_printing = ""
+		self.fire_whos_printing()
+
+	# Fire a OctoPrint Printing event (if settings allow this).
+	# e.g. PrintDone, PrintStarted, PrintFailed.
+	# On a real install with an actual printer this probably isn't desirable
+	# On a monitoring install it lets other plugins do their thing.
+	# Injected into data is 'username' property with the username
+	# of the user that is printing. This then allows other
+	# plugins (e.g. email/twitter) to pick this up for notifications.
+	# It is not an official part of the OctoPrint event.
+	def fire_printer_event(self, event, data):
+		if self._settings.get(['firePrinterEvents']):
+			self._logger.info("Firing printer event '{0}' for who's printing update".format(event))
+
+			# Inject the username of the user that is/was printing.
+			data["username"] = self._whos_printing;
+			# Setup other properties expected for the printer event
+			# name is the filename, overload it here with the who's printing
+			# to allow timelapse naming based on the user name.
+			data["name"] = self._whos_printing;
+			data["path"] = ".";
+			data["origin"] = "local";
+			data["time"] = 60;  # HACK: used in PrintDone
+			# Deprecated since 1.3.0
+			data["file"] = "/gcode/" + self._whos_printing + ".gcode";
+			self._event_bus.fire(event, data)
+		else:
+			self._logger.info("Not firing printer event '{0}' as it's disabled by config".format(event))
+
+	# Fire the Custom OctoPrint wide event "WhosPrinting"
 	def fire_whos_printing(self):
+		eventName = "WhosPrinting"
+
 		# Find the user. _whos_printing may be empty
 		# so we may get a None user if nobody is printing.
 		user = self._user_manager.findUser(self._whos_printing)
 		if user == None:
-			self._event_bus.fire("WhosPrinting", dict(name="", printInPrivate=False))
-			return;
+			self._event_bus.fire(eventName, dict(username=""))
+		else:
+			self._event_bus.fire(eventName, dict(username=self._whos_printing))
 
-		# Get the users setting for print in private so that
-		# twitter plugin/live streaming/etc can prevent a
-		# picture being made public.
-		user_settings = user.get_all_settings()
-		print_in_private = user_settings.get("printInPrivate", False),
+		# Send the plugin message as well to update UI's
+		payload = dict(username=self._whos_printing)
+		pluginData = dict(eventEvent=eventName, eventPayload=payload)
+		self._plugin_manager.send_plugin_message(self._identifier, pluginData)
 
-		self._event_bus.fire("WhosPrinting", dict(username=self._whos_printing, printInPrivate=print_in_private))
+	##########################################
+	# User registration / Management / Setings
+	##########################################
 
 	def register_user(self, data):
 		# expect the following to be provided in the data.
@@ -184,54 +292,125 @@ class WhosPrintingPlugin(octoprint.plugin.SettingsPlugin,
 		# add the user to the "whosprinting" group so they can be filtered when showing the
 		# dropdown option of who's printing.
 		# Set API Key to none and not to overwrite.
-		self._logger.info("Create user. {0}".format(data.username));
-		self._user_manager.addUser(data.username, data.pasword, True, ["user", "whosprinting"],None, False)
-		self._logger.info("User created.");
+
+		if not self._settings.get(['canRegister', True]):
+			self._logger.error("Attempting to register when it is disabled")
+			return
+
+		username = data["username"]
+		self._logger.info("Create user. {0}".format(username))
+		self._user_manager.addUser(username, data["password"], True, ["user", "whosprinting"], None, False)
+		self._logger.info("User created.")
 
 		userSettings = dict(
-			displayName = data.displayName,
-			emailAddress = data.emailAddress,
-			phoneNumber = data.phoneNumber,
-			twitter = data.twitterHandle,
-			printInPrivate = data.printInPrivate,
-			keyfobId = data.keyfobId,
+			displayName=data["displayName"],
+			emailAddress=data["emailAddress"],
+			phoneNumber=data["phoneNumber"],
+			twitter=data["twitterHandle"],
+			printInPrivate=data.get("printInPrivate", False),
+			keyfobId=data["keyfobId"],
 		)
-		self._user_manager.changeUserSetting(data.username, userSettings)
-		self._logger.info("User settings updated.");
+		self._user_manager.changeUserSettings(username, userSettings)
+		self._logger.info("User settings updated.")
+
+	# Do we need to raise an event to indicate that a user has been added
+	# so that the who's printing selector can be updated.
+	# or is SETTINGS_UPDATED fired?
 
 	def update_user(self, data):
-		self._logger.info("Update user settings.");
+		self._logger.info("Update user settings.")
 		# "username", "displayName", "emailAddress", "phoneNumber", "twitterHandle", "printInPrivate", "keyfobId"
 		userSettings = dict(
-			displayName=data.displayName,
-			emailAddress=data.emailAddress,
-			phoneNumber=data.phoneNumber,
-			twitter=data.twitterHandle,
-			printInPrivate=data.printInPrivate,
-			keyfobId=data.keyfobId,
+			displayName=data["displayName"],
+			emailAddress=data["emailAddress"],
+			phoneNumber=data["phoneNumber"],
+			twitter=data["twitterHandle"],
+			printInPrivate=data.get("printInPrivate", False),
+			keyfobId=data["keyfobId"],
 		)
-		self._user_manager.changeUserSetting(data.username, userSettings)
-		self._logger.info("User settings updated.");
+		self._user_manager.changeUserSettings(data["username"], userSettings)
+		self._logger.info("User settings updated.")
 
-	# EventHandler Plugin
-	def on_event(self, event, payload):
-		# Publish the event for the javascript to pick up.
-		# TODO: allow settings to disable this
-		pluginData = dict(
-			eventEvent=event,
-			eventPayload=payload)
-		self._plugin_manager.send_plugin_message(self._identifier, pluginData)
+	def get_whos_printing_details(self, user):
+		user_settings = user.get_all_settings()
+		self._logger.info("User settings from UserManager: {}".format(user_settings))
 
-	# Implementation
+		email_address = None
+		if self._settings.get(['showEmailAddress']):
+			email_address = user_settings.get("emailAddress", "")
 
-	# RFID Card Reader
-	# TODO: Raise events ("WhosPrinting.TagSeen", "WhosPrinting.UserSelected"...)
+		phone_number = None
+		if self._settings.get(['showPhoneNumber']):
+			phone_number = user_settings.get("phoneNumber", "")
+
+		settings = dict(
+			username=self._whos_printing,
+			displayName=user_settings.get("displayName", self._whos_printing),
+			emailAddress=email_address,
+			phoneNumber=phone_number,
+			twitterHandle=user_settings.get("twitterHandle", ""),
+			printInPrivate=user_settings.get("printInPrivate", False),
+		)
+
+		return settings
+
+	def find_user_from_tag(self, tagId):
+		self._logger.info("Getting user for tag {0}".format(tagId))
+		return None
+
+	# RFID Card Reader handling
+	def initialize_rfid_tag_reader(self):
+		self._logger.info("Initializing RFID Tag Reader")
+		# Close the old reader (nullReader if not reader selected).
+		if self._check_tags_timer:
+			self._check_tags_timer = None
+
+		if self._rfidReader:
+			self._rfidReader.close()
+
+		readerType = self._settings.get(['rfidReaderType'])
+		if readerType == "Micro RWD HiTag2":
+			self._rfidReader = microRWDHiTag2Reader(self._logger)
+		else:
+			self._rfidReader = nullTagReader(self._logger)
+
+		try:
+			# Try...
+			self._rfidReader.open(self._settings.get(['rfidComPort']))
+
+			self._rfidReader.read_version()
+			# set the timer to check the reader for a tag
+			self.startTimer()
+		except IOError as e:
+			self._logger.error("Failed to open the serial port.")
+
+		# To check for a tag use:
+		# Do this on a timer or constant loop on a different thread?
+		# self._rfidReader.seekTag()
+
+	def startTimer(self):
+		self._check_tags_timer = RepeatedTimer(1, self.check_tag, None, None, True)
+		self._check_tags_timer.start()
+
+	def check_tag(self):
+		#self._logger.info("Checking RFID reader for tag")
+		try:
+			tag = self._rfidReader.seekTag()
+			if tag:
+				self._logger.info("Got a tag!!!! TagId: {0}".format(tag))
+				# Raise the tag seen event.
+				payload = dict(tagId=tag)
+				self._event_bus.fire("RfidTagSeen", payload)
+		except IOError as e:
+			self._logger.error("Error reading from the tag reader.")
+			#TODO: Disable after too many errors
 
 
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py
 # ("OctoPrint-PluginSkeleton"), you may define that here. Same goes for the other metadata derived from setup.py that
 # can be overwritten via __plugin_xyz__ control properties. See the documentation for that.
 __plugin_name__ = "Who's Printing Plugin"
+
 
 def __plugin_load__():
 	global __plugin_implementation__
@@ -241,4 +420,3 @@ def __plugin_load__():
 	__plugin_hooks__ = {
 		"octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information
 	}
-
