@@ -7,7 +7,6 @@ import logging.handlers
 class microRWDHiTag2Reader():
 	def __init__(self, logger):
 		self._logger = logger
-		self.lastTag = None
 		self.serial_port = None
 
 	def open(self, port):
@@ -23,8 +22,9 @@ class microRWDHiTag2Reader():
 		try:
 			self._logger.info("Closing serial port for tag reader")
 			self.serial_port.close()
-		except IOError as e:
-			self._logger.exception("Failed to close the serial port.")
+		except Exception as e:
+			self._logger.exception("Failed to close the serial port. Exception: {0}".format(e))
+			#Sink the exception as it's a close port operation.
 
 	def read_version(self):
 		# test the state of the tag reader,
@@ -90,18 +90,10 @@ class microRWDHiTag2Reader():
 		if tag == None:
 			return None
 
-		# so we have a real tag
-		tag2 = self.tryTag()  # read it again
+		# Read it a second time to check
+		# we have a valid tag.
+		tag2 = self.tryTag()
 
 		if tag2 == tag:
-			# we believe we have a real tag, correctly read, otherwise loop again
-
 			self._logger.info("Tag: ".format(tag.encode('hex')))
-
-			# wait until the tag goes away
-			# might have to ignore a couple of "not there"s
-			tagGone = False
-			while not tagGone:
-				tagGone = self.tryTag() == None and self.tryTag() == None and self.tryTag() == None  # three blanks is convincing tag gone
-
 			return tag

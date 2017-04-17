@@ -60,7 +60,25 @@ $(function() {
                 twitterHandle: self.twitterHandle(),
                 printInPrivate: self.printInPrivate()
             };
-            OctoPrint.simpleApiCommand(self.pluginId, "RegisterUser", registerUser, {});
+            //OctoPrint.simpleApiCommand(self.pluginId, "RegisterUser", registerUser, {});
+
+            $.post("/plugin/whosprinting/register", registerUser)
+                .done(function() {
+                    console.log("registered");
+                    $("#whosprinting_register_dialog").modal('hide');
+                    self.username("");
+                    self.password("");
+                    self.confirmPassword("");
+                    self.keyfobId("");
+                    self.displayName("");
+                    self.emailAddress("");
+                    self.phoneNumber("");
+                    self.twitterHandle("");
+                    self.printInPrivate("");
+                })
+                .error(function() {
+                    alert("An error occured trying to register.");
+                });
         };
 
         return self;
@@ -113,6 +131,7 @@ $(function() {
         self.whosPrintingList = ko.observableArray([]);
         // The user who's been selected in the select/options list.
         self.selectedWhosPrinting = ko.observable("");
+        self.unknownTagSeen = ko.observable(false);
 
         self.canIndicatePrinting = ko.computed(function() {
             if (self.selectedWhosPrinting() === undefined) {
@@ -135,6 +154,8 @@ $(function() {
 
             if (data.eventEvent == "WhosPrinting") {
                 console.log("Who's Printing Event from onDataUpdater");
+                // If a known tag is see then the WhosPrinting event is fired
+                self.unknownTagSeen(false);
                 self.getWhosPrinting();
             }
 
@@ -148,18 +169,18 @@ $(function() {
             // If the tag was seen and it is unknown.
             if (data.eventEvent == "UnknownRfidTagSeen") {
                 console.log("Unknown tag seen. TagId:" + data.eventPayload.tagId);
+                // We may not be in registration mode but push it up anyway.
                 self.registerUserViewModel.tagSeen(data.eventPayload);
-
+                // If in normal mode, show a "Unknown Tag, please register" message
+                // If not logged in it won't be visible anyway
+                self.unknownTagSeen(true);
+                // This needs to be cleared if the tag was used for registering.
             }
 
             // A known tag will set the WhosPrinting event
         };
 
         self.onUserLoggedIn = function(user) {
-            //console.warn("CurrentUser: " + user);
-            //self.currentUser(user);
-
-            console.log("*** on User Logged In")
             self.populateUsers();
             self.getWhosPrinting();
         };

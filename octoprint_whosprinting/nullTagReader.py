@@ -11,7 +11,7 @@ class nullTagReader():
 		self._logger.info("Null tag reader open port: {0}".format(port))
 
 	def close(self):
-		self._logger.info("NUll tag reader closing serial port")
+		self._logger.info("Null tag reader closing serial port")
 
 	def read_version(self):
 		return None
