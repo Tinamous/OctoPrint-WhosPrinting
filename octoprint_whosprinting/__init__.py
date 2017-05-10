@@ -149,9 +149,9 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 
 		return dict(
 			GeyKeyfobId=[],
-			RegisterUser=["username", "password", "displayName", "emailAddress", "phoneNumber", "twitterHandle",
+			RegisterUser=["username", "password", "displayName", "emailAddress", "phoneNumber", "twitterUsername",
 						  "printInPrivate"],
-			UpdateUser=["username", "displayName", "emailAddress", "phoneNumber", "twitterHandle", "printInPrivate"],
+			UpdateUser=["username", "displayName", "emailAddress", "phoneNumber", "twitterUsername", "printInPrivate"],
 			PrintStarted=["username"],
 			PrintFinished=[],
 			PrintFailed=[],
@@ -163,10 +163,10 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 		self._logger.info("On api POST Data: {}".format(data))
 
 		if command == "RegisterUser":
-			# data contains: "username", "password", "displayName", "emailAddress", "phoneNumber", "twitterHandle", "tinamousHandle", "slackHandle", "printInPrivate", "keyfobId"
+			# data contains: "username", "password", "displayName", "emailAddress", "phoneNumber", "twitterUsername", "tinamousHandle", "slackHandle", "printInPrivate", "keyfobId"
 			self.register_user(data)
 		elif command == "UpdateUser":
-			# data contains: "username", "displayName", "emailAddress", "phoneNumber", "twitterHandle", "tinamousHandle", "slackHandle", "printInPrivate", "keyfobId"
+			# data contains: "username", "displayName", "emailAddress", "phoneNumber", "twitterUsername", "tinamousHandle", "slackHandle", "printInPrivate", "keyfobId"
 			self.update_user(data)
 		elif command == "PrintStarted":
 			# data contains: username
@@ -209,7 +209,7 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 			displayName = flask.request.values["displayName"],
 			emailAddress = flask.request.values["emailAddress"],
 			phoneNumber = flask.request.values["phoneNumber"],
-			twitterHandle = flask.request.values["twitterHandle"],
+			twitterUsername = flask.request.values["twitterUsername"],
 			printInPrivate = flask.request.values["printInPrivate"],
 			keyfobId = flask.request.values["keyfobId"],
 		)
@@ -341,7 +341,7 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 
 	def register_user(self, data):
 		# expect the following to be provided in the data.
-		# "username", "password", "displayName", "emailAddress", "phoneNumber", "twitterHandle", "printInPrivate", "keyfobId"
+		# "username", "password", "displayName", "emailAddress", "phoneNumber", "twitterUsername", "printInPrivate", "keyfobId"
 		# add the user to the "whosprinting" group so they can be filtered when showing the
 		# dropdown option of who's printing.
 		# Set API Key to none and not to overwrite.
@@ -376,12 +376,12 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 
 	def update_user(self, data):
 		self._logger.info("Update user settings.")
-		# "username", "displayName", "emailAddress", "phoneNumber", "twitterHandle", "printInPrivate", "keyfobId"
+		# "username", "displayName", "emailAddress", "phoneNumber", "twitterUsername", "printInPrivate", "keyfobId"
 		userSettings = dict(
 			displayName=data["displayName"],
 			emailAddress=data["emailAddress"],
 			phoneNumber=data["phoneNumber"],
-			twitter=data["twitterHandle"],
+			twitter=data["twitterUsername"],
 			tinamous=data["tinamousUsername"],
 			slack=data["slackUsername"],
 			printInPrivate=data.get("printInPrivate", False),

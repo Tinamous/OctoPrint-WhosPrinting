@@ -15,8 +15,9 @@ $(function() {
         self.displayName = ko.observable("");
         self.emailAddress = ko.observable("");
         self.phoneNumber = ko.observable("");
-        self.twitterHandle = ko.observable("");
-        self.tinamousHandle = ko.observable("");
+        self.twitterUsername = ko.observable("");
+        self.tinamousUsername = ko.observable("");
+        self.slackUsername = ko.observable("");
         self.printInPrivate = ko.observable(false);
         self.pluginId = "whosprinting";
         self.captureTagText = ko.observable("Capture");
@@ -58,7 +59,9 @@ $(function() {
                 displayName: self.displayName(),
                 emailAddress: self.emailAddress(),
                 phoneNumber: self.phoneNumber(),
-                twitterHandle: self.twitterHandle(),
+                twitter: self.twitterUsername(),
+                tinamous: self.tinamousUsername(),
+                slack: self.slackUsername(),
                 tinamousHandle: self.tinamousHandle(),
                 printInPrivate: self.printInPrivate()
             };
@@ -75,8 +78,9 @@ $(function() {
                     self.displayName("");
                     self.emailAddress("");
                     self.phoneNumber("");
-                    self.twitterHandle("");
-                    self.tinamousHandle("");
+                    self.twitterUsername("");
+                    self.tinamousUsername("");
+                    self.slackUsername("");
                     self.printInPrivate("");
                 })
                 .error(function() {
