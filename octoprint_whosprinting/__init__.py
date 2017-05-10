@@ -52,8 +52,9 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 			showEmailAddress=False,
 			showPhoneNumber=False,
 			canRegister=True,
-			rfidReaderType = "Micro RWD HiTag2",
-			readerOptions = ["None", "Micro RWD HiTag2"]
+			rfidReaderType="Micro RWD HiTag2",
+			readerOptions=["None", "Micro RWD HiTag2"],
+			tinamous_url="",
 		)
 
 	def on_settings_save(self, data):
@@ -162,10 +163,10 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 		self._logger.info("On api POST Data: {}".format(data))
 
 		if command == "RegisterUser":
-			# data contains: "username", "password", "displayName", "emailAddress", "phoneNumber", "twitterHandle", "printInPrivate", "keyfobId"
+			# data contains: "username", "password", "displayName", "emailAddress", "phoneNumber", "twitterHandle", "tinamousHandle", "slackHandle", "printInPrivate", "keyfobId"
 			self.register_user(data)
 		elif command == "UpdateUser":
-			# data contains: "username", "displayName", "emailAddress", "phoneNumber", "twitterHandle", "printInPrivate", "keyfobId"
+			# data contains: "username", "displayName", "emailAddress", "phoneNumber", "twitterHandle", "tinamousHandle", "slackHandle", "printInPrivate", "keyfobId"
 			self.update_user(data)
 		elif command == "PrintStarted":
 			# data contains: username
@@ -258,6 +259,18 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 	# Indicate that a user is printing as set from the Who's Printing Tab
 	# data contains: name, path, origin,file, username
 	def set_whos_printing_print_started(self, data):
+
+		# TODO: If somebody is currently printing and a new tag seen...
+		# Either the last persons print was finished and they didn't
+		# get flagged as finished and a new printer has come along
+		# Or somebody tagged whena print was under way (e.g to register).
+		# Assume it's a new printer...
+
+		if self._whos_printing:
+			self._logger.error("Somebody is already printing, we need to mark that as finished first")
+
+
+
 		# Store the user that is currently printing.
 		self._whos_printing = data["username"]
 		self._logger.info("Set who's printing to: {0}".format(self._whos_printing))
@@ -346,7 +359,9 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 			displayName=data["displayName"],
 			emailAddress=data["emailAddress"],
 			phoneNumber=data["phoneNumber"],
-			twitter=data["twitterHandle"],
+			twitter=data["twitterUsername"],
+			tinamous=data["tinamousUsername"],
+			slack=data["slackUsername"],
 			printInPrivate=data.get("printInPrivate", False),
 			keyfobId=data["keyfobId"],
 		)
@@ -367,6 +382,8 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 			emailAddress=data["emailAddress"],
 			phoneNumber=data["phoneNumber"],
 			twitter=data["twitterHandle"],
+			tinamous=data["tinamousUsername"],
+			slack=data["slackUsername"],
 			printInPrivate=data.get("printInPrivate", False),
 			keyfobId=data["keyfobId"],
 		)
@@ -394,7 +411,9 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 			displayName=displayName,
 			emailAddress=email_address,
 			phoneNumber=phone_number,
-			twitterHandle=user_settings.get("twitterHandle"),
+			twitterUsername=user_settings.get("twitter"),
+			tinamousUsername=user_settings.get("tinamous"),
+			slackUsername=user_settings.get("slack"),
 			printInPrivate=user_settings.get("printInPrivate"),
 		)
 

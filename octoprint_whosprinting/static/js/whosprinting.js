@@ -16,6 +16,7 @@ $(function() {
         self.emailAddress = ko.observable("");
         self.phoneNumber = ko.observable("");
         self.twitterHandle = ko.observable("");
+        self.tinamousHandle = ko.observable("");
         self.printInPrivate = ko.observable(false);
         self.pluginId = "whosprinting";
         self.captureTagText = ko.observable("Capture");
@@ -58,6 +59,7 @@ $(function() {
                 emailAddress: self.emailAddress(),
                 phoneNumber: self.phoneNumber(),
                 twitterHandle: self.twitterHandle(),
+                tinamousHandle: self.tinamousHandle(),
                 printInPrivate: self.printInPrivate()
             };
             //OctoPrint.simpleApiCommand(self.pluginId, "RegisterUser", registerUser, {});
@@ -74,6 +76,7 @@ $(function() {
                     self.emailAddress("");
                     self.phoneNumber("");
                     self.twitterHandle("");
+                    self.tinamousHandle("");
                     self.printInPrivate("");
                 })
                 .error(function() {
@@ -84,15 +87,18 @@ $(function() {
         return self;
     }
 
+    /*
     function WhosPrintingUser() {
         var self = this;
         self.displayName = ko.observable("");
         self.emailAddress = ko.observable("");
         self.phoneNumber = ko.observable("");
-        self.twitterHandle = ko.observable("");
+        self.twitterUsername = ko.observable("");
+        self.tinamousUsername = ko.observable("");
+        self.slackUsername = ko.observable("");
         self.printInPrivate = ko.observable(false);
         return self;
-    }
+    }*/
 
     function WhosPrintingViewModel(parameters) {
         var self = this;
@@ -221,7 +227,6 @@ $(function() {
                 }
                 self.isPrinting(false);
                 self.whosPrinting(null);
-                console.log("Nobody's printing. :-(")
             }
         };
 

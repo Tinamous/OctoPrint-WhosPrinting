@@ -46,7 +46,9 @@
         <h2><span data-bind="text: displayName"></span> is Printing</h2>
         <h4>Contact Details:</h4>
         <ul>
-            <li>Twitter: @<span data-bind="text:twitterHandle"></span></li>
+            <li>Twitter: @<span data-bind="text:twitterUsername"></span></li>
+            <li>Tinamous: @<span data-bind="text:tinamousUsername"></span></li>
+            <li>Slack: @<span data-bind="text:slackUsername"></span></li>
             <li>Email: <span data-bind="text:emailAddress"></span></li>
             <li>Phone: <span data-bind="text:phoneNumber"></span></li>
         </ul>
@@ -130,7 +132,27 @@
                     <div class="controls">
                         <div class="input-prepend">
                             <span class="add-on">@</span>
-                            <input class="form-control" type="text", data-bind="value: twitterHandle" />
+                            <input class="form-control" type="text", data-bind="value: twitterUsername" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Tinamous</label>
+                    <div class="controls">
+                        <div class="input-prepend">
+                            <span class="add-on">@</span>
+                            <input class="form-control" type="text", data-bind="value: tinamousUsername" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Slack</label>
+                    <div class="controls">
+                        <div class="input-prepend">
+                            <span class="add-on">@</span>
+                            <input class="form-control" type="text", data-bind="value: slackUsername" />
                         </div>
                     </div>
                 </div>
@@ -153,8 +175,6 @@
                         <span class="help-block">Click Capture and swipe your key fob on the printers sensor.</span>
                     </div>
                 </div>
-
-                <button data-bind="click: $parent.testKeyFob">Test</button>
 
             </div>
 
