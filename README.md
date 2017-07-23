@@ -65,11 +65,11 @@ If you are printing from OctoPrint you should disable this option to prevent con
 
 If your OctoPrint is isolated from the internet you can use this option to display the Who's Printing user email address on the screen when a (different) user is logged in (e.g. Default login for OctoPrint on a display at the printer).
 
-# Show Phone Number
+## Show Phone Number
 
 As Show Email, if selected will make the Who's Printing user phone number visible on the UI.
 
-# Open Registration
+## Open Registration
 
 When checked this allowes for any user to register on the OctoPrint instance so they may be listed in the Who's Printed selection.
 
