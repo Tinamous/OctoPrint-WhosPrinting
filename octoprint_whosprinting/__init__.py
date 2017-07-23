@@ -474,18 +474,12 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 		self._check_tags_timer.start()
 
 	def check_tag(self):
-		self._logger.info("Checking RFID reader for tag")
-
 		try:
 			tag = self._rfidReader.seekTag()
 
 			# If it's the same tag as before, user has not released the tag
 			# so just ignore it.
 			if tag == self._last_tag:
-				if tag:
-					self._logger.info("Tag matched, ignoring.")
-				else:
-					self._logger.info("No tag present")
 				return
 
 			if tag:
