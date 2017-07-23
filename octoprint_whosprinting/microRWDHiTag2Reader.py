@@ -17,6 +17,8 @@ class microRWDHiTag2Reader():
 			self.serial_port = serial.Serial(port, 9600, rtscts=1, timeout=0.2)
 		except IOError as e:
 			self._logger.error("Failed to open the serial port.")
+		except OSError as e:
+			self._logger.error("Failed to open the serial port. Has the port changed? Using: {0}".format(port))
 
 	def close(self):
 		try:
@@ -47,6 +49,7 @@ class microRWDHiTag2Reader():
 		value = ord(response)
 
 		self._logger.info("Tag reader version response: " + response.encode('hex'))
+		return value
 
 	def tryTag(self):
 		# test the state of the tag reader,
