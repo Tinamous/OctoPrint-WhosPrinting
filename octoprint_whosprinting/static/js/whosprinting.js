@@ -62,7 +62,6 @@ $(function() {
                 twitter: self.twitterUsername(),
                 tinamous: self.tinamousUsername(),
                 slack: self.slackUsername(),
-                tinamousHandle: self.tinamousHandle(),
                 printInPrivate: self.printInPrivate()
             };
             //OctoPrint.simpleApiCommand(self.pluginId, "RegisterUser", registerUser, {});
