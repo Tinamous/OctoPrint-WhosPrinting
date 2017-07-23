@@ -41,7 +41,7 @@ class microRWDHiTag2Reader():
 		response = self.serial_port.read()
 
 		if response == "":
-			self._logger.error ("Warning: Serial timeout happened")
+			self._logger.error ("Warning: Serial timeout getting RFID reader version. Is the reader connected?")
 			return None
 
 		value = ord(response)
@@ -66,6 +66,7 @@ class microRWDHiTag2Reader():
 		# then 4 bytes representing 0x01234567 style serial number for the card.
 		response = self.serial_port.read()
 		if response == "":
+			self._logger.error("Warning: Serial timeout reading RFID tag")
 			print "Warning: Serial timeout happened"
 			return None
 		if (ord(response) == 0xD6):  # tag present
@@ -87,6 +88,7 @@ class microRWDHiTag2Reader():
 		# Debounces both arrival and departure of tag
 
 		tag = self.tryTag()
+		self._logger.info("Initial Tag read: ".format(tag.encode('hex')))
 
 		if tag == None:
 			return None
@@ -94,6 +96,7 @@ class microRWDHiTag2Reader():
 		# Read it a second time to check
 		# we have a valid tag.
 		tag2 = self.tryTag()
+		self._logger.info("Second Tag read: ".format(tag.encode('hex')))
 
 		if tag2 == tag:
 			self._logger.info("Tag: ".format(tag.encode('hex')))

@@ -445,23 +445,24 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 
 		readerType = self._settings.get(['rfidReaderType'])
 		if readerType == "Micro RWD HiTag2":
+			self._logger.info("Initializing Micro RWD HiTag2")
 			self._rfidReader = microRWDHiTag2Reader(self._logger)
 		else:
+			self._logger.info("Using null tag reader")
 			self._rfidReader = nullTagReader(self._logger)
 
 		try:
-			# Try...
-			self._rfidReader.open(self._settings.get(['rfidComPort']))
+			rfidPort = self._settings.get(['rfidComPort'])
+			self._logger.info("Opening port: {0}".rfidPort)
+			self._rfidReader.open(rfidPort)
 
-			self._rfidReader.read_version()
+			readerVersion = self._rfidReader.read_version()
+			self._logger.info("Reader version: {0}".readerVersion)
 			# set the timer to check the reader for a tag
 			self.startTimer()
 		except IOError as e:
 			self._logger.error("Failed to open the serial port.")
 
-		# To check for a tag use:
-		# Do this on a timer or constant loop on a different thread?
-		# self._rfidReader.seekTag()
 
 	def startTimer(self):
 		self._check_tags_timer = RepeatedTimer(0.5, self.check_tag, None, None, True)
@@ -475,6 +476,8 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 			# If it's the same tag as before, user has not released the tag
 			# so just ignore it.
 			if tag == self._last_tag:
+				if tag:
+					self._logger.info("Tag matched, ignoring. TagId: {0}".format(tag))
 				return
 
 			if tag:
