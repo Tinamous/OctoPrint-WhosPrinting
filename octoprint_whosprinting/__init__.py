@@ -469,11 +469,13 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 
 
 	def startTimer(self):
+		self._logger.info("Starting timer to read RFID tag")
 		self._check_tags_timer = RepeatedTimer(0.5, self.check_tag, None, None, True)
 		self._check_tags_timer.start()
 
 	def check_tag(self):
-		#self._logger.info("Checking RFID reader for tag")
+		self._logger.info("Checking RFID reader for tag")
+
 		try:
 			tag = self._rfidReader.seekTag()
 
@@ -482,6 +484,8 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 			if tag == self._last_tag:
 				if tag:
 					self._logger.info("Tag matched, ignoring. TagId: {0}".format(tag))
+				else:
+					self._logger.info("No tag present")
 				return
 
 			if tag:
