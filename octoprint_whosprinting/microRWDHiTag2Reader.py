@@ -91,7 +91,7 @@ class microRWDHiTag2Reader():
 		# Debounces both arrival and departure of tag
 
 		tag = self.tryTag()
-		self._logger.info("Initial Tag read: ".format(tag.encode('hex')))
+		self._logger.info("Initial Tag read: {0}".format(tag.encode('hex')))
 
 		if tag == None:
 			return None
@@ -99,8 +99,8 @@ class microRWDHiTag2Reader():
 		# Read it a second time to check
 		# we have a valid tag.
 		tag2 = self.tryTag()
-		self._logger.info("Second Tag read: ".format(tag.encode('hex')))
+		self._logger.info("Second Tag read: {0}".format(tag.encode('hex')))
 
 		if tag2 == tag:
-			self._logger.info("Tag: ".format(tag.encode('hex')))
+			self._logger.info("Tag: {0}".format(tag.encode('hex')))
 			return tag

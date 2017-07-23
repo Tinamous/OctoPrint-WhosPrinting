@@ -483,7 +483,7 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 			# so just ignore it.
 			if tag == self._last_tag:
 				if tag:
-					self._logger.info("Tag matched, ignoring. TagId: {0}".format(tag))
+					self._logger.info("Tag matched, ignoring.")
 				else:
 					self._logger.info("No tag present")
 				return
