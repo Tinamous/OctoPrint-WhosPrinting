@@ -463,6 +463,10 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 			if rfidPort:
 				self._logger.info("Opening port: {0} for RFID reader.".format(rfidPort))
 				self._rfidReader.open(rfidPort)
+				self._rfidReader.close()
+				# Open and close the port to start with to try and reset the RFID
+				# reader which appears to be fussy...
+				self._rfidReader.open(rfidPort)
 			else:
 				self._logger.error("No COM port set for RFID reader")
 
