@@ -194,13 +194,16 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 		self._logger.info("Blueprint register user called")
 
 		if not "username" in flask.request.values:
+			self._logger.info("Register missing username.")
 			return flask.make_response("Username is required.", 400)
 
 		if not "password" in flask.request.values:
-			return flask.make_response("Username is required.", 400)
+			self._logger.info("Register missing password.")
+			return flask.make_response("Password is required.", 400)
 
 		canRegister = self._settings.get(['canRegister'])
 		if not canRegister:
+			self._logger.info("Registration is disabled.")
 			return flask.make_response("Open Registration is disabled.", 400)
 
 		payload = dict(
@@ -209,14 +212,18 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 			displayName = flask.request.values["displayName"],
 			emailAddress = flask.request.values["emailAddress"],
 			phoneNumber = flask.request.values["phoneNumber"],
-			twitterUsername = flask.request.values["twitterUsername"],
+			twitterUsername = flask.request.values["twitter"],
+			tinamousUsername = flask.request.values["tinamous"],
+			slackUsername = flask.request.values["slack"],
 			printInPrivate = flask.request.values["printInPrivate"],
 			keyfobId = flask.request.values["keyfobId"],
 		)
 
 		if self.register_user(payload):
+			self._logger.info("User '{0}' registered.".format(flask.request.values["username"]))
 			return flask.make_response("Created.", 201)
 		else :
+			self._logger.info("Failed to register user '{0}'.".format(flask.request.values["username"]))
 			return flask.make_response("Failed to register user.", 501)
 
 	# EventHandler Plugin
