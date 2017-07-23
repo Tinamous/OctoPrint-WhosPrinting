@@ -499,8 +499,11 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 				self._last_tag = None
 				self._logger.info("Tag removed")
 		except IOError as e:
-			self._logger.error("Error reading from the tag reader.")
+			self._logger.exception("Error reading tag. Exception: {0}".format(e))
 			#TODO: Disable after too many errors
+		except Exception as e:
+			self._logger.exception("Unhandled error reading tag. Exception: {0}".format(e))
+
 
 
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py
