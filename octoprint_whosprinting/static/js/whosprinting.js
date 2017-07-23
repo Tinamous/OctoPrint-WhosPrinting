@@ -25,6 +25,7 @@ $(function() {
 
         self.captureTag = function() {
             console.log("Waiting for user tag to be seen.")
+            self.keyfobId("");
             self.captureRfidTag(true);
             self.captureTagText("Waiting...");
 

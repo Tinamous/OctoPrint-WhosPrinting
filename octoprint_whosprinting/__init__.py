@@ -453,13 +453,17 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 
 		try:
 			rfidPort = self._settings.get(['rfidComPort'])
-			self._logger.info("Opening port: {0}".rfidPort)
-			self._rfidReader.open(rfidPort)
+			if rfidPort:
+				self._logger.info("Opening port: {0} for RFID reader.".format(rfidPort))
+				self._rfidReader.open(rfidPort)
+			else:
+				self._logger.error("No COM port set for RFID reader")
 
 			readerVersion = self._rfidReader.read_version()
-			self._logger.info("Reader version: {0}".readerVersion)
-			# set the timer to check the reader for a tag
-			self.startTimer()
+			if readerVersion:
+				self._logger.info("Reader version: {0}".format(readerVersion))
+				# set the timer to check the reader for a tag
+				self.startTimer()
 		except IOError as e:
 			self._logger.error("Failed to open the serial port.")
 
