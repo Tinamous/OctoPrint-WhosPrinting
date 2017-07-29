@@ -2,6 +2,8 @@
 
 Please Note: This is designed for use with OctoPrint where OctoPrint isn't used to print (e.g. display/webcam only), this plugin currently raises events inside OctoPrint that may confuse OctoPrint if you are actually printing.
 
+Also Note: Works best with the OctoPrint-Registration plugin is installed to allow users to register and set optional information (display name, contact details, etc).
+
 This plugin is useful where OctoPrint is used in a multi-user environment, it allows the person printing to select themself from a list of users and indicate that they are printing.
 
 The user details are then shown on OctoPrint sessions (where a user is logged in), so that the person printing can be contacted should they need to be.

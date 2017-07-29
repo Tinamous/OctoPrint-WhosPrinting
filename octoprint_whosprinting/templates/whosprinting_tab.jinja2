@@ -15,8 +15,6 @@
         <p>You can change your password by logging in and selecting "User Settings" from the navbar user dropdown. Other settings cannot be changed at this time. Please ask the OctoPrint administrator to change them for you.</p>
 
         <p>Please note this is for one printer only. You will need to register with Who's Printing on every printer's OctoPrint.</p>
-
-        <button class="btn btn-large btn-success" href="#whosprinting_register_dialog" data-toggle="modal" data-target="#whosprinting_register_dialog">Register for Who's Printing</button>
     </div>
 </div>
 
@@ -67,127 +65,6 @@
     </div>
 
 </div>
-
-<!-- Registration Modal -->
-<div id="whosprinting_register_dialog" style="display:none" data-bind="with: registerUserViewModel" class="modal fade" role="dialog">
-    <div class="modal-dialog">
-
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-                <h4 class="modal-title">Register</h4>
-            </div>
-
-            <div class="modal-body form-horizontal">
-                <p>Register an account with OctoPrint for use with Who's Printing.</p>
-
-                <div class="control-group">
-                    <label class="control-label">Username</label>
-                    <div class="controls">
-                        <input type="text", data-bind="value: username" />
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label class="control-label">Password</label>
-                    <div class="controls">
-                        <input type="password", data-bind="value: password" />
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label class="control-label">Confirm Password</label>
-                    <div class="controls">
-                        <input type="password", data-bind="value: confirmPassword" />
-                    </div>
-                </div>
-
-                <h3>Optional Details</h3>
-
-                <div class="control-group">
-                    <label class="control-label">Display Name</label>
-                    <div class="controls">
-                        <input type="text", data-bind="value: displayName" />
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label class="control-label">Email Address</label>
-                    <div class="controls">
-                        <input type="text", data-bind="value: emailAddress" />
-                        <span class="help-block">Caution: This may be visible to the internet.</span>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label class="control-label">Phone Number or Extension</label>
-                    <div class="controls">
-                        <input type="text", data-bind="value: phoneNumber" />
-                        <span class="help-block">Caution: This may be visible to the internet.</span>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label class="control-label">Twitter</label>
-                    <div class="controls">
-                        <div class="input-prepend">
-                            <span class="add-on">@</span>
-                            <input class="form-control" type="text", data-bind="value: twitterUsername" />
-                        </div>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label class="control-label">Tinamous</label>
-                    <div class="controls">
-                        <div class="input-prepend">
-                            <span class="add-on">@</span>
-                            <input class="form-control" type="text", data-bind="value: tinamousUsername" />
-                        </div>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label class="control-label">Slack</label>
-                    <div class="controls">
-                        <div class="input-prepend">
-                            <span class="add-on">@</span>
-                            <input class="form-control" type="text", data-bind="value: slackUsername" />
-                        </div>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label class="control-label">No Photos/Videos</label>
-                    <div class="controls">
-                        <input type="checkbox" data-bind="value: printInPrivate" />
-                        <span class="help-block">Disable plugins from publish photos/videos to the internet (e.g. Twitter).</span>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label class="control-label">Key Fob Id</label>
-                    <div class="controls">
-                        <div class="input-append">
-                            <input class="form-control input-large " type="text" data-bind="value: keyfobId" />
-                            <button class="btn btn-primary" data-bind="click: captureTag, text: captureTagText">Capture</button>
-                        </div>
-                        <span class="help-block">Click Capture and swipe your key fob on the printers sensor.</span>
-                    </div>
-                </div>
-
-            </div>
-
-            <div class="modal-footer">
-                <button type="button" class="btn btn-success" data-bind="click: register">Register</button>
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-            </div>
-
-        </div>
-
-    </div>
-</div>
-
 
 <!-- Confirm Print Failed Modal -->
 <div id="whosprinting_confirm_print_failed" style="display:none" class="modal fade" role="dialog">

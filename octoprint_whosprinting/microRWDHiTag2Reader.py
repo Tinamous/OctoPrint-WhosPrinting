@@ -13,7 +13,6 @@ class microRWDHiTag2Reader():
 		self._logger.info("Opening serial port '{0}' for tag reader".format(port))
 
 		try:
-			#self.ser = serial.Serial('/dev/ttyUSB0', 9600, rtscts=1, timeout=0.2)
 			self.serial_port = serial.Serial(port, 9600, rtscts=1, timeout=0.2)
 		except IOError as e:
 			self._logger.error("Failed to open the serial port.")

@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import flask
 import logging
 import logging.handlers
+import time
 
 from octoprint.events import eventManager, Events
 from octoprint.util import RepeatedTimer
@@ -20,8 +21,7 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
                          octoprint.plugin.AssetPlugin,
                          octoprint.plugin.TemplatePlugin,
                          octoprint.plugin.SimpleApiPlugin,
-                         octoprint.plugin.EventHandlerPlugin,
-                         octoprint.plugin.BlueprintPlugin):
+                         octoprint.plugin.EventHandlerPlugin):
 
 	def initialize(self):
 		self._logger.setLevel(logging.DEBUG)
@@ -40,7 +40,7 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 	def on_shutdown(self):
 		self._check_tags_timer = None
 		self._rfidReader.close()
-
+		self._logger.info("Who's Printing on_shutdown completed.")
 
 	##~~ SettingsPlugin mixin
 
@@ -133,7 +133,7 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 				self._logger.info("Nobody's printing")
 				return
 
-			self._logger.info("Who's printing: {}".format(self._whos_printing))
+			self._logger.info("Who's printing: {0}".format(self._whos_printing))
 			user = self._user_manager.findUser(self._whos_printing)
 			if user == None:
 				self._logger.info("Failed to find user: {0}".format(self._whos_printing))
@@ -149,9 +149,6 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 
 		return dict(
 			GeyKeyfobId=[],
-			RegisterUser=["username", "password", "displayName", "emailAddress", "phoneNumber", "twitterUsername",
-						  "printInPrivate"],
-			UpdateUser=["username", "displayName", "emailAddress", "phoneNumber", "twitterUsername", "printInPrivate"],
 			PrintStarted=["username"],
 			PrintFinished=[],
 			PrintFailed=[],
@@ -162,13 +159,7 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 	def on_api_command(self, command, data):
 		self._logger.info("On api POST Data: {}".format(data))
 
-		if command == "RegisterUser":
-			# data contains: "username", "password", "displayName", "emailAddress", "phoneNumber", "twitterUsername", "tinamousHandle", "slackHandle", "printInPrivate", "keyfobId"
-			self.register_user(data)
-		elif command == "UpdateUser":
-			# data contains: "username", "displayName", "emailAddress", "phoneNumber", "twitterUsername", "tinamousHandle", "slackHandle", "printInPrivate", "keyfobId"
-			self.update_user(data)
-		elif command == "PrintStarted":
+		if command == "PrintStarted":
 			# data contains: username
 			self.set_whos_printing_print_started(data)
 		elif command == "PrintFinished":
@@ -181,50 +172,6 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 			payload = dict(keyfobId="123789852")
 			pluginData = dict(eventEvent="UnknownRfidTagSeen", eventPayload=payload)
 			self._plugin_manager.send_plugin_message(self._identifier, pluginData)
-
-	# Blueprint for registration needs to be unprotected.
-	def is_blueprint_protected(self):
-		self._logger.info("blueprint protected...")
-		return False
-
-	# API BluePrint implementation for registration
-	# Needs to be done as blueprint so that protection can be disabled.
-	@octoprint.plugin.BlueprintPlugin.route("/register", methods=["POST"])
-	def api_register_user(self):
-		self._logger.info("Blueprint register user called")
-
-		if not "username" in flask.request.values:
-			self._logger.info("Register missing username.")
-			return flask.make_response("Username is required.", 400)
-
-		if not "password" in flask.request.values:
-			self._logger.info("Register missing password.")
-			return flask.make_response("Password is required.", 400)
-
-		canRegister = self._settings.get(['canRegister'])
-		if not canRegister:
-			self._logger.info("Registration is disabled.")
-			return flask.make_response("Open Registration is disabled.", 400)
-
-		payload = dict(
-			username = flask.request.values["username"],
-			password = flask.request.values["password"],
-			displayName = flask.request.values["displayName"],
-			emailAddress = flask.request.values["emailAddress"],
-			phoneNumber = flask.request.values["phoneNumber"],
-			twitterUsername = flask.request.values["twitter"],
-			tinamousUsername = flask.request.values["tinamous"],
-			slackUsername = flask.request.values["slack"],
-			printInPrivate = flask.request.values["printInPrivate"],
-			keyfobId = flask.request.values["keyfobId"],
-		)
-
-		if self.register_user(payload):
-			self._logger.info("User '{0}' registered.".format(flask.request.values["username"]))
-			return flask.make_response("Created.", 201)
-		else :
-			self._logger.info("Failed to register user '{0}'.".format(flask.request.values["username"]))
-			return flask.make_response("Failed to register user.", 501)
 
 	# EventHandler Plugin
 	def on_event(self, event, payload):
@@ -346,57 +293,6 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 	# User registration / Management / Setings
 	##########################################
 
-	def register_user(self, data):
-		# expect the following to be provided in the data.
-		# "username", "password", "displayName", "emailAddress", "phoneNumber", "twitterUsername", "printInPrivate", "keyfobId"
-		# add the user to the "whosprinting" group so they can be filtered when showing the
-		# dropdown option of who's printing.
-		# Set API Key to none and not to overwrite.
-
-		if not self._settings.get(['canRegister']):
-			self._logger.error("Attempting to register when it is disabled")
-			return False
-
-		username = data["username"]
-		self._logger.info("Create user. {0}".format(username))
-		self._user_manager.addUser(username, data["password"], True, ["user", "whosprinting"], None, False)
-		self._logger.info("User created.")
-
-		userSettings = dict(
-			displayName=data["displayName"],
-			emailAddress=data["emailAddress"],
-			phoneNumber=data["phoneNumber"],
-			twitter=data["twitterUsername"],
-			tinamous=data["tinamousUsername"],
-			slack=data["slackUsername"],
-			printInPrivate=data.get("printInPrivate", False),
-			keyfobId=data["keyfobId"],
-		)
-		self._user_manager.changeUserSettings(username, userSettings)
-		self._logger.info("User settings updated.")
-
-		return True
-
-	# Do we need to raise an event to indicate that a user has been added
-	# so that the who's printing selector can be updated.
-	# or is SETTINGS_UPDATED fired?
-
-	def update_user(self, data):
-		self._logger.info("Update user settings.")
-		# "username", "displayName", "emailAddress", "phoneNumber", "twitterUsername", "printInPrivate", "keyfobId"
-		userSettings = dict(
-			displayName=data["displayName"],
-			emailAddress=data["emailAddress"],
-			phoneNumber=data["phoneNumber"],
-			twitter=data["twitterUsername"],
-			tinamous=data["tinamousUsername"],
-			slack=data["slackUsername"],
-			printInPrivate=data.get("printInPrivate", False),
-			keyfobId=data["keyfobId"],
-		)
-		self._user_manager.changeUserSettings(data["username"], userSettings)
-		self._logger.info("User settings updated.")
-
 	def get_whos_printing_details(self, user):
 		user_settings = user.get_all_settings()
 		self._logger.info("User settings from UserManager: {}".format(user_settings))
@@ -458,14 +354,24 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 			self._logger.info("Using null tag reader")
 			self._rfidReader = nullTagReader(self._logger)
 
+		if self.try_initialze_tag_reader():
+			return
+
+		# Failed to initialise reader, try again...
+		self._rfidReader.close()
+		time.sleep(2)
+		if self.try_initialze_tag_reader:
+			return
+
+		self._logger.info("Failed to initialze RFID reader on second attempt.")
+		# Find a way to indicate a fault.
+
+
+	def try_initialze_tag_reader(self):
 		try:
 			rfidPort = self._settings.get(['rfidComPort'])
 			if rfidPort:
 				self._logger.info("Opening port: {0} for RFID reader.".format(rfidPort))
-				self._rfidReader.open(rfidPort)
-				self._rfidReader.close()
-				# Open and close the port to start with to try and reset the RFID
-				# reader which appears to be fussy...
 				self._rfidReader.open(rfidPort)
 			else:
 				self._logger.error("No COM port set for RFID reader")
@@ -475,9 +381,13 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 				self._logger.info("Reader version: {0}".format(readerVersion))
 				# set the timer to check the reader for a tag
 				self.startTimer()
+				return True
+			else:
+				self._logger.error("Failed to read version from RFID Reader.")
+				return False
 		except IOError as e:
 			self._logger.error("Failed to open the serial port.")
-
+			return False
 
 	def startTimer(self):
 		self._logger.info("Starting timer to read RFID tag")
