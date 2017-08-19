@@ -136,9 +136,21 @@ $(function() {
             OctoPrint.simpleApiCommand(self.pluginId, "PrintStarted", payload, {});
         };
 
+        self.printFailedNozzleBlocked = function() {
+            self.isPrinting(false);
+            var payload = { reason:"Nozzle Blocked / No Filament" };
+            OctoPrint.simpleApiCommand(self.pluginId, "PrintFailed", payload, {});
+        };
+
+        self.printFailedModelMoved = function() {
+            self.isPrinting(false);
+            var payload = { reason:"Model Moved" };
+            OctoPrint.simpleApiCommand(self.pluginId, "PrintFailed", payload, {});
+        };
+
         self.printFailed = function() {
             self.isPrinting(false);
-            var payload = { };
+            var payload = { reason:"Unknown" };
             OctoPrint.simpleApiCommand(self.pluginId, "PrintFailed", payload, {});
         };
 

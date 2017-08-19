@@ -89,7 +89,7 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 		# for details.
 		return dict(
 			whosprinting=dict(
-				displayName="Who's Printing Plugin",
+				displayName="Who's Printing",
 				displayVersion=self._plugin_version,
 
 				# version check: github repository
@@ -151,7 +151,7 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 			GeyKeyfobId=[],
 			PrintStarted=["username"],
 			PrintFinished=[],
-			PrintFailed=[],
+			PrintFailed=["reason"],
 			FakeTag=[],
 		)
 
@@ -223,8 +223,6 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 		if self._whos_printing:
 			self._logger.error("Somebody is already printing, we need to mark that as finished first")
 
-
-
 		# Store the user that is currently printing.
 		self._whos_printing = data["username"]
 		self._logger.info("Set who's printing to: {0}".format(self._whos_printing))
@@ -279,15 +277,18 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 		# Find the user. _whos_printing may be empty
 		# so we may get a None user if nobody is printing.
 		user = self._user_manager.findUser(self._whos_printing)
-		if user == None:
-			self._event_bus.fire(eventName, dict(username=""))
-		else:
+		if user:
 			self._event_bus.fire(eventName, dict(username=self._whos_printing))
 
-		# Send the plugin message as well to update UI's
-		payload = dict(username=self._whos_printing)
-		pluginData = dict(eventEvent=eventName, eventPayload=payload)
-		self._plugin_manager.send_plugin_message(self._identifier, pluginData)
+			# Send the plugin message as well to update UI's
+			payload = dict(username=self._whos_printing)
+			pluginData = dict(eventEvent=eventName, eventPayload=payload)
+			self._plugin_manager.send_plugin_message(self._identifier, pluginData)
+		else:
+			# Clear the UI now printing has stopped
+			payload = dict(username="")
+			pluginData = dict(eventEvent=eventName, eventPayload=payload)
+			self._plugin_manager.send_plugin_message(self._identifier, pluginData)
 
 	##########################################
 	# User registration / Management / Setings
@@ -424,7 +425,7 @@ class WhosPrintingPlugin(octoprint.plugin.StartupPlugin,
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py
 # ("OctoPrint-PluginSkeleton"), you may define that here. Same goes for the other metadata derived from setup.py that
 # can be overwritten via __plugin_xyz__ control properties. See the documentation for that.
-__plugin_name__ = "Who's Printing Plugin"
+__plugin_name__ = "Who's Printing"
 
 
 def __plugin_load__():
